@@ -718,6 +718,12 @@ class XianyuAsync:
                     item_id = parsed_message.get("item_id", "")
                     send_user_id = parsed_message.get("send_user_id", "")
                     msg_time = parsed_message.get("msg_time", "")
+
+                    try:
+                        from app.patches.goofish_push.hooks import handle_parsed_message
+                        await handle_parsed_message(self, parsed_message, source="chat")
+                    except Exception as push_e:
+                        logger.warning(f"【{self.cookie_id}】goofish push hook failed: {push_e}")
                     
                     # 0. 检查是否是自己发出的消息，且包含重发货触发关键字
                     myid = getattr(self, 'myid', self.cookie_id)
@@ -950,6 +956,12 @@ class XianyuAsync:
                     item_id = parsed_message.get("item_id", "")
                     send_user_id = parsed_message.get("send_user_id", "")
                     msg_time = parsed_message.get("msg_time", "")
+
+                    try:
+                        from app.patches.goofish_push.hooks import handle_parsed_message
+                        await handle_parsed_message(self, parsed_message, source="card_update")
+                    except Exception as push_e:
+                        logger.warning(f"【{self.cookie_id}】goofish push hook failed: {push_e}")
                     
                     # 处理订单状态（获取订单详情）
                     await self._process_order_status(raw_message, send_message, item_id, send_user_id, msg_time)

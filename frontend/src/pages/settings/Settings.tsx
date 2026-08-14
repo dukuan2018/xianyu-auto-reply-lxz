@@ -72,6 +72,7 @@ export function Settings() {
 
   // SMTP密码显示状态
   const [showSmtpPassword, setShowSmtpPassword] = useState(false)
+  const [showGoofishPushKey, setShowGoofishPushKey] = useState(false)
   // 支付宝密钥显示状态
   const [showAlipayPrivateKey, setShowAlipayPrivateKey] = useState(false)
   const [showAlipayPublicKey, setShowAlipayPublicKey] = useState(false)
@@ -825,6 +826,127 @@ export function Settings() {
               <button onClick={() => setShowTestEmailModal(true)} className="btn-ios-secondary">
                 发送测试邮件
               </button>
+            </div>
+          </div>
+
+          {/* 闲鱼接口推送 */}
+          <div className="vben-card lg:col-span-2">
+            <div className="vben-card-header">
+              <h2 className="vben-card-title">
+                <MessageCircle className="w-4 h-4" />
+                闲鱼接口推送
+              </h2>
+            </div>
+            <div className="vben-card-body space-y-4">
+              <p className="text-sm text-slate-500 dark:text-slate-400">配置 Python 收到闲鱼图片和订单消息后推送到 Java 后台的接口</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex items-center justify-between rounded-lg border border-slate-100 p-3 dark:border-slate-700">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">启用推送</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">总开关</p>
+                  </div>
+                  <label className="switch-ios">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settings?.['goofish.chat_push.enabled'] ?? false)}
+                      onChange={(e) => setSettings(s => s ? { ...s, 'goofish.chat_push.enabled': e.target.checked } : null)}
+                    />
+                    <span className="switch-slider"></span>
+                  </label>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-slate-100 p-3 dark:border-slate-700">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">订单消息</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">chatNodify</p>
+                  </div>
+                  <label className="switch-ios">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settings?.['goofish.chat_push.push_order_enabled'] ?? true)}
+                      onChange={(e) => setSettings(s => s ? { ...s, 'goofish.chat_push.push_order_enabled': e.target.checked } : null)}
+                    />
+                    <span className="switch-slider"></span>
+                  </label>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-slate-100 p-3 dark:border-slate-700">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">图片消息</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">chatReply</p>
+                  </div>
+                  <label className="switch-ios">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settings?.['goofish.chat_push.push_image_enabled'] ?? true)}
+                      onChange={(e) => setSettings(s => s ? { ...s, 'goofish.chat_push.push_image_enabled': e.target.checked } : null)}
+                    />
+                    <span className="switch-slider"></span>
+                  </label>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="input-group md:col-span-2">
+                  <label className="input-label">Java 后台基础地址</label>
+                  <input
+                    type="text"
+                    value={(settings?.['goofish.chat_push.url'] as string) || ''}
+                    onChange={(e) => setSettings(s => s ? { ...s, 'goofish.chat_push.url': e.target.value } : null)}
+                    placeholder="例如：https://console.yidaw.cn/prod-api"
+                    className="input-ios"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">为空时可分别配置下方完整接口地址</p>
+                </div>
+                <div className="input-group">
+                  <label className="input-label">图片推送接口</label>
+                  <input
+                    type="text"
+                    value={(settings?.['goofish.chat_push.chat_reply_url'] as string) || ''}
+                    onChange={(e) => setSettings(s => s ? { ...s, 'goofish.chat_push.chat_reply_url': e.target.value } : null)}
+                    placeholder="默认：基础地址 + /xianyu/chatReply"
+                    className="input-ios"
+                  />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">订单推送接口</label>
+                  <input
+                    type="text"
+                    value={(settings?.['goofish.chat_push.chat_notify_url'] as string) || ''}
+                    onChange={(e) => setSettings(s => s ? { ...s, 'goofish.chat_push.chat_notify_url': e.target.value } : null)}
+                    placeholder="默认：基础地址 + /xianyu/chatNodify"
+                    className="input-ios"
+                  />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">接口密钥</label>
+                  <div className="relative">
+                    <input
+                      type={showGoofishPushKey ? 'text' : 'password'}
+                      value={(settings?.['goofish.chat_push.key'] as string) || ''}
+                      onChange={(e) => setSettings(s => s ? { ...s, 'goofish.chat_push.key': e.target.value } : null)}
+                      placeholder="X-Goofish-Chat-Key"
+                      className="input-ios pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGoofishPushKey(!showGoofishPushKey)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                      title={showGoofishPushKey ? '隐藏' : '显示'}
+                    >
+                      {showGoofishPushKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="input-group">
+                  <label className="input-label">超时时间（秒）</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={(settings?.['goofish.chat_push.timeout_seconds'] as string) || '10'}
+                    onChange={(e) => setSettings(s => s ? { ...s, 'goofish.chat_push.timeout_seconds': e.target.value } : null)}
+                    className="input-ios"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

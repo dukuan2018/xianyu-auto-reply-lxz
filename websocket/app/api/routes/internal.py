@@ -63,6 +63,13 @@ class SendMessageRequest(BaseModel):
     wait_timeout: float = 10.0
 
 
+class SendImageRequest(BaseModel):
+    """发送图片请求"""
+    chat_id: str
+    image_url: str
+    to_user_id: str | None = None
+
+
 class DeliverOrderRequest(BaseModel):
     """订单发货请求"""
     order_no: str
@@ -1051,6 +1058,66 @@ async def send_message(account_id: str, request: SendMessageRequest):
             "success": False,
             "code": 500,
             "message": f"发送消息失败: {str(e)}",
+            "data": None,
+        }
+
+
+@router.post("/accounts/{account_id}/send-image")
+async def send_image(account_id: str, request: SendImageRequest):
+    """
+    发送图片消息
+
+    供外部兼容接口转发调用，实际发送仍复用 XianyuAutoAsync.send_image_msg。
+    """
+    try:
+        from app.services.xianyu.cookie_manager import get_manager
+        from loguru import logger
+
+        manager = get_manager()
+        instance = manager.instances.get(account_id)
+        if not instance:
+            return {
+                "success": False,
+                "code": 404,
+                "message": f"账号 {account_id} 未运行或不存在",
+                "data": None,
+            }
+
+        if not hasattr(instance, "ws") or not instance.ws:
+            return {
+                "success": False,
+                "code": 400,
+                "message": f"账号 {account_id} WebSocket 未连接",
+                "data": None,
+            }
+
+        send_result = await instance.send_image_msg(
+            websocket=instance.ws,
+            chat_id=request.chat_id,
+            send_user_id=request.to_user_id or "",
+            image_url=request.image_url,
+        )
+        if not isinstance(send_result, dict) or not send_result.get("success"):
+            err = send_result.get("error_message") if isinstance(send_result, dict) else None
+            return {
+                "success": False,
+                "code": 500,
+                "message": err or "图片发送失败",
+                "data": send_result,
+            }
+
+        logger.info(f"【内部API】图片发送成功 account_id={account_id} chat_id={request.chat_id}")
+        return {
+            "success": True,
+            "code": 200,
+            "message": "发送成功",
+            "data": send_result,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "code": 500,
+            "message": f"发送图片失败: {str(e)}",
             "data": None,
         }
 

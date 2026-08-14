@@ -41,6 +41,7 @@ from . import (
     face_verification,
     feedback,
     geetest,
+    goofish_compat,
     goofish_compass,
     goofish_crawler,
     health,
@@ -111,6 +112,8 @@ api_router.include_router(cookies.router, prefix="/cookies", tags=["账号管理
 # 商品和订单
 api_router.include_router(items.items_router, tags=["商品管理"])  # items.py已定义prefix="/items"
 api_router.include_router(orders.router, prefix="/orders", tags=["订单管理"])
+api_router.include_router(goofish_compat.router, prefix="/orders", tags=["Goofish兼容接口"])
+api_router.include_router(goofish_compat.router, tags=["Goofish兼容接口"])
 api_router.include_router(product_publish.router, tags=["商品发布"])  # 已定义prefix="/product-publish"
 api_router.include_router(ai_listing.router, tags=["AI铺货"])  # 已定义prefix="/ai-listing"
 api_router.include_router(product_publish_capability.router, tags=["商品发布账号能力"])
