@@ -136,6 +136,22 @@ async def _push_image_message(
         return
 
     cookie_id = getattr(xianyu_instance, "cookie_id", "")
+    myid = str(getattr(xianyu_instance, "myid", "") or "").split("@", 1)[0].strip()
+    send_user_id = _clean_unknown(parsed_message.get("send_user_id", ""))
+    normalized_send_user_id = str(send_user_id or "").split("@", 1)[0].strip()
+    if not normalized_send_user_id:
+        logger.info(
+            "【{}】goofish image push skipped, send_user_id empty source={} chat_id={} image_count={}",
+            cookie_id, source, parsed_message.get("chat_id", ""), len(image_urls),
+        )
+        return
+    if myid and normalized_send_user_id == myid:
+        logger.info(
+            "【{}】goofish image push skipped, self message source={} chat_id={} send_user_id={} image_count={}",
+            cookie_id, source, parsed_message.get("chat_id", ""), normalized_send_user_id, len(image_urls),
+        )
+        return
+
     item_id = str(parsed_message.get("item_id", "") or "").strip()
     if not item_id:
         logger.info(
@@ -152,7 +168,7 @@ async def _push_image_message(
     payload = {
         "cookie_id": cookie_id,
         "msg_time": parsed_message.get("msg_time", ""),
-        "send_user_id": _clean_unknown(parsed_message.get("send_user_id", "")),
+        "send_user_id": send_user_id,
         "send_user_name": parsed_message.get("send_user_name", ""),
         "item_id": item_id,
         "send_message": parsed_message.get("send_message", ""),
