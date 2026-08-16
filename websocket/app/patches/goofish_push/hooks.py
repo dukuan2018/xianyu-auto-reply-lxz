@@ -219,10 +219,11 @@ async def _push_order_message(
         return
 
     send_user_id = _clean_unknown(parsed_message.get("send_user_id", ""))
+    buyer_id = _clean_unknown(parsed_message.get("buyer_id", ""))
     payload = {
         "orderId": order_id,
         "sendUserId": send_user_id,
-        "buyerId": send_user_id,
+        "buyerId": buyer_id,
         "goofishShopId": cookie_id,
         "goofishChatId": parsed_message.get("chat_id", ""),
         "itemId": parsed_message.get("item_id", ""),

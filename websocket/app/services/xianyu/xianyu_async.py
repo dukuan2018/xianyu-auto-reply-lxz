@@ -157,6 +157,8 @@ class XianyuAsync:
         self.last_token_refresh_status = "not_started"
         self.max_captcha_verification_count = 3
         self.last_message_received_time = 0
+        self.last_sync_package_time = 0
+        self.last_non_heartbeat_message_time = 0
         self.message_cookie_refresh_cooldown = 300
         self.restarted_in_browser_refresh = False
         
@@ -564,6 +566,38 @@ class XianyuAsync:
     def _safe_str(self, obj):
         """安全地将对象转换为字符串（委托公共实现）"""
         return safe_str(obj)
+
+    def _is_websocket_auth_failed(self, message_data: dict) -> bool:
+        """判断闲鱼 IM WebSocket 是否注册/鉴权失败。"""
+        if not isinstance(message_data, dict):
+            return False
+        text = json.dumps(message_data, ensure_ascii=False)
+        failed_keywords = (
+            "register/auth failed",
+            "auth failed",
+            "FAIL_SYS_SESSION_EXPIRED",
+            "FAIL_SYS_TOKEN",
+            "SESSION_EXPIRED",
+            "token expired",
+        )
+        return any(keyword in text for keyword in failed_keywords)
+
+    def _record_websocket_message_health(self, message_data: dict) -> None:
+        """记录真实消息通道状态，避免只看心跳造成假在线。"""
+        if not isinstance(message_data, dict) or "body" not in message_data:
+            return
+        self.last_non_heartbeat_message_time = time.time()
+        body = message_data.get("body") or {}
+        if isinstance(body, dict) and "syncPushPackage" in body:
+            self.last_sync_package_time = self.last_non_heartbeat_message_time
+            sync_package = body.get("syncPushPackage") or {}
+            sync_data = sync_package.get("data", [])
+            logger.info(
+                "【{}】收到闲鱼同步包 data_count={} maxPts={}",
+                self.cookie_id,
+                len(sync_data) if isinstance(sync_data, list) else 0,
+                sync_package.get("maxPts", ""),
+            )
     
     async def init(self, ws):
         """
@@ -3121,6 +3155,16 @@ class XianyuAsync:
                                 logger.debug(f"【{self.cookie_id}】收到消息: {len(message) if message else 0} 字节")
                                 try:
                                     message_data = json.loads(message)
+
+                                    if self._is_websocket_auth_failed(message_data):
+                                        logger.error(
+                                            "【{}】WebSocket register/auth failed, message={}",
+                                            self.cookie_id,
+                                            json.dumps(message_data, ensure_ascii=False)[:1000],
+                                        )
+                                        raise ConnectionError("WebSocket register/auth failed")
+
+                                    self._record_websocket_message_health(message_data)
                                     
                                     # 处理心跳响应
                                     if self.connection_manager.handle_heartbeat_response(message_data):
@@ -3135,6 +3179,8 @@ class XianyuAsync:
                                     # 并通过信号量控制并发数量，防止内存泄漏
                                     self._create_tracked_task(self._handle_message_with_semaphore(message_data, websocket))
                                     
+                                except ConnectionError:
+                                    raise
                                 except Exception as e:
                                     logger.error(f"【{self.cookie_id}】处理消息出错: {e}")
                                     continue
