@@ -1291,6 +1291,7 @@ class CookieTokenManager:
                 await self._set_cached_token(new_token, self.device_id)
                 # Token 变化后旧连接的 Token 已失效，不重连会进入"心跳正常但收不到消息"的僵尸状态
                 if token_changed:
+                    logger.info(f"【{self.cookie_id}】Token已变化，触发WebSocket重连以使用新Token")
                     await self._reconnect_websocket_for_renewed_token(
                         reason="Token刷新后已变化"
                     )
