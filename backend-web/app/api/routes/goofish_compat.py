@@ -16,6 +16,7 @@ from common.db.session import async_session_maker
 from common.models.system_setting import SystemSetting
 from common.models.xy_account import XYAccount
 from common.services.order_service import OrderStatusChecker
+from common.utils.internal_auth import build_internal_auth_headers
 
 router = APIRouter(tags=["Goofish兼容接口"])
 
@@ -33,9 +34,9 @@ class CompatSendImageRequest(BaseModel):
     cookie_id: str
     chat_id: str
     to_user_id: str = ""
-    image_url: str = ""
-    image_base64: str = ""
-    filename: str = "image.jpg"
+    image_url: str | None = ""
+    image_base64: str | None = ""
+    filename: str | None = "image.jpg"
 
 
 class CompatOrderFullInfoRequest(BaseModel):
@@ -79,8 +80,9 @@ def _plain_response(success: bool, message: str, data: Any | None = None) -> dic
 async def _post_websocket_internal(path: str, payload: dict[str, Any]) -> dict[str, Any]:
     settings = get_settings()
     url = f"{settings.websocket_service_url.rstrip('/')}{path}"
+    headers = build_internal_auth_headers(settings.internal_api_token)
     async with httpx.AsyncClient(timeout=35.0) as client:
-        response = await client.post(url, json=payload)
+        response = await client.post(url, json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
     return data if isinstance(data, dict) else {"success": False, "message": "WebSocket服务返回格式异常"}
@@ -117,12 +119,15 @@ async def send_message(request: CompatSendMessageRequest):
         return _plain_response(False, error)
     if not request.cookie_id or not request.chat_id or not request.message:
         return _plain_response(False, "cookie_id/chat_id/message不能为空")
+    if not request.to_user_id.strip():
+        return _plain_response(False, "to_user_id不能为空")
 
     try:
         result = await _post_websocket_internal(
             f"/internal/accounts/{request.cookie_id}/send-message",
             {
                 "chat_id": request.chat_id,
+                "to_user_id": request.to_user_id,
                 "message": request.message,
                 "wait_result": True,
                 "wait_timeout": 15,
@@ -145,12 +150,14 @@ async def send_image(request: CompatSendImageRequest):
         return _plain_response(False, error)
     if not request.cookie_id or not request.chat_id:
         return _plain_response(False, "cookie_id/chat_id不能为空")
+    if not request.to_user_id.strip():
+        return _plain_response(False, "to_user_id不能为空")
 
     image_url = request.image_url
     temp_path = ""
     if not image_url and request.image_base64:
         try:
-            temp_path, image_url = _write_base64_image(request.image_base64, request.filename)
+            temp_path, image_url = _write_base64_image(request.image_base64, request.filename or "image.jpg")
         except Exception as exc:
             return _plain_response(False, f"image_base64解析失败: {exc}")
     if not image_url:

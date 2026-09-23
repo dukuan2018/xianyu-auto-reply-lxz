@@ -1,0 +1,11 @@
+py -0p
+
+python -m pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+python -m pip config set global.timeout 120
+
+python -m venv .venv
+.venv\Scripts\activate
+
+python -m pip install -e .
+
+
